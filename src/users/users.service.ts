@@ -31,6 +31,7 @@ export class UsersService {
     return null;
   }
 
+  // TODO: add validation pipe
   async create(@Res() res, createUserDto: CreateUserDto) {
     const userEmailExists = await this.findByEmail(createUserDto.email);
     const usernameExists = await this.findByUsername(createUserDto.username);
@@ -64,10 +65,10 @@ export class UsersService {
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+    return this.usersRepository.update(updateUserDto, { where: { id } });
   }
 
   remove(id: number) {
-    return `This action removes a #${id} user`;
+    return this.usersRepository.destroy({where: { id }});
   }
 }
