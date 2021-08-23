@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable, Res } from '@nestjs/common';
+import { MailService } from 'src/mail/mail.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -8,7 +9,8 @@ export class UsersService {
 
   constructor(
     @Inject('USERS_REPOSITORY')
-    private usersRepository: typeof User
+    private usersRepository: typeof User,
+    private mailService: MailService
   ) { }
 
   async findByUsername(username: string) {
@@ -49,6 +51,9 @@ export class UsersService {
     }
 
     const user = await this.usersRepository.create(createUserDto);
+
+    const token = Math.floor(1000 + Math.random() * 9000).toString();
+    await this.mailService.sendUserConfirmation(user, token);
 
     return res.status(HttpStatus.OK).json({
       message: "User has been created successfully",
