@@ -1,8 +1,9 @@
-import { HttpStatus, Inject, Injectable, Res } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, Res } from '@nestjs/common';
 import { MailService } from 'src/mail/mail.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -13,52 +14,67 @@ export class UsersService {
     private mailService: MailService
   ) { }
 
-  async findByUsername(username: string) {
+  async getUserByUsername(username: string) {
+    const user = await this.usersRepository.findOne({ where: { username: username } });
+
+    if(user) {
+      return user;
+    }
+    return;
+  }
+
+  async getUserByEmail(email: string) {
+    const user = await this.usersRepository.findOne({ where: { email: email } });
+
+    if(user) {
+      return user;
+    }
+    return;
+  }
+
+  async checkIfExistsByUsername(username: string) {
     const user = await this.usersRepository.findOne({ where: { username: username } });
 
     if (user) {
-      return user;
+      throw new HttpException('User with this username already exists', HttpStatus.CONFLICT);
     }
-
     return null;
   }
 
-  async findByEmail(email: string): Promise<any> {
+  async checkIfExistsByEmail(email: string): Promise<any> {
     const user = await this.usersRepository.findOne({ where: { email: email } });
 
     if (user) {
-      return user;
+      throw new HttpException('User with this email already exists', HttpStatus.CONFLICT);
     }
-
     return null;
   }
 
-  // TODO: add validation pipe
   async create(@Res() res, createUserDto: CreateUserDto) {
-    const userEmailExists = await this.findByEmail(createUserDto.email);
-    const usernameExists = await this.findByUsername(createUserDto.username);
+    try {
+      await this.checkIfExistsByEmail(createUserDto.email);
+      await this.checkIfExistsByUsername(createUserDto.username);
 
-    if (userEmailExists) {
-      return res.status(HttpStatus.CONFLICT).json({
-        message: "User with that email already exists"
+      const hash = await bcrypt.hash(createUserDto.password, 10);
+      const user = await this.usersRepository.create({
+        ...createUserDto,
+        password: hash
+      });
+  
+      const token = Math.floor(1000 + Math.random() * 9000).toString();
+      await this.mailService.sendUserConfirmation(user, token);
+  
+      user.password = undefined;
+      
+      return res.status(HttpStatus.OK).json({
+        message: "User has been created successfully",
+        user
+      });
+    } catch(error) {
+      return res.status(error.getStatus()).json({
+        message: error.message
       });
     }
-
-    if (usernameExists) {
-      return res.status(HttpStatus.CONFLICT).json({
-        message: "Username is already taken"
-      });
-    }
-
-    const user = await this.usersRepository.create(createUserDto);
-
-    const token = Math.floor(1000 + Math.random() * 9000).toString();
-    await this.mailService.sendUserConfirmation(user, token);
-
-    return res.status(HttpStatus.OK).json({
-      message: "User has been created successfully",
-      user
-    });
   }
 
   findAll(): Promise<User[]> {
