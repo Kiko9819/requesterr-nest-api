@@ -20,7 +20,7 @@ export class UsersService {
     if(user) {
       return user;
     }
-    return;
+    return null;
   }
 
   async getUserByEmail(email: string) {
@@ -29,7 +29,7 @@ export class UsersService {
     if(user) {
       return user;
     }
-    return;
+    return null;
   }
 
   async checkIfExistsByUsername(username: string) {
