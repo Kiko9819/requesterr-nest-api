@@ -14,6 +14,14 @@ export class UsersService {
     private mailService: MailService
   ) { }
 
+  async findOne(id: number) {
+    const user = await this.usersRepository.findOne({where: {id}});
+    if(user) {
+      return user;
+    }
+    throw new HttpException('User with this id does not exist', HttpStatus.NOT_FOUND);
+  }
+
   async getUserByUsername(username: string) {
     const user = await this.usersRepository.findOne({ where: { username: username } });
 
@@ -79,10 +87,6 @@ export class UsersService {
 
   findAll(): Promise<User[]> {
     return this.usersRepository.findAll<User>();
-  }
-
-  findOne(id: number): Promise<User> {
-    return this.usersRepository.findOne<User>({ where: { id } });
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
