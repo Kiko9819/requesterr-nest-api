@@ -13,6 +13,10 @@ export class AuthService {
         private configService: ConfigService
     ) { }
 
+    getCookieForLogOut() {
+        return `Authentication=; HttpOnly; Path=/; Max-Age=0`;
+    }
+
     getCookieWithJwtToken(userId: number) {
         const payload: TokenPayload = {userId};
         const token = this.jwtService.sign(payload);
