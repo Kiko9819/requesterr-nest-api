@@ -27,8 +27,11 @@ export class AuthService {
 
     }
 
-    getCookieForLogOut() {
-        return `Authentication=; HttpOnly; Path=/; Max-Age=0`;
+    getCookiesForLogOut() {
+        return [
+            'Authentication=; HttpOnly; Path=/; Max-Age=0',
+            'Refresh=; HttpOnly; Path=/; Max-Age=0'
+        ];
     }
 
     getCookieWithJwtAccessToken(userId: number) {
@@ -90,6 +93,29 @@ export class AuthService {
             throw new UnauthorizedException();
         }
     }
+
+    async getUserIfRefreshTokenMatches(userId: number, refreshToken: string) {
+        const user = await this.usersService.findOne(userId);
+        
+        return new Promise((resolve, reject) => {
+            this.getToken(userId).pipe(
+                take(1)
+            ).subscribe({
+                next: async (cachedToken) => {
+                    const isRefreshTokenMatching = await bcrypt.compare(
+                        refreshToken,
+                        cachedToken
+                    );
+    
+                    if (isRefreshTokenMatching) {
+                        return resolve(user);
+                    } else {
+                        reject("Refresh tokens not matching");
+                    }
+                }
+            })
+        })
+      }
 
     async login(user: any) {
         const payload = { username: user.username, sub: user.userId };
