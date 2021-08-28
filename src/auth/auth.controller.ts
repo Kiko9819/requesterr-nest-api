@@ -1,11 +1,13 @@
-import { Controller, Post, UseGuards, HttpCode, Req, Res } from '@nestjs/common';
+import { Controller, Post, UseGuards, HttpCode, Req, Res, Get, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import * as bcrypt from 'bcrypt';
 import { take } from 'rxjs';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 
 @Controller('auth')
+@UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
 
     constructor(private readonly authService: AuthService) { }
@@ -38,14 +40,26 @@ export class AuthController {
     
     @UseGuards(JwtAuthGuard)
     @Post('/log-out')
+    @HttpCode(200)
     async logOut(@Req() request, @Res() response) {
         this.authService.deleteToken(request.user.userId).pipe(
             take(1)
         ).subscribe({
             next: () => {
-                response.setHeader('Set-Cookie', this.authService.getCookieForLogOut());
+                response.setHeader('Set-Cookie', this.authService.getCookiesForLogOut());
                 return response.sendStatus(200);
             }
         });
     }
+
+    @UseGuards(JwtRefreshGuard)
+    @Get('refresh')
+    refresh(@Req() request, @Res() response) {
+        const accessTokenCookie = this.authService.getCookieWithJwtAccessToken(request.user.userId);
+        
+        response.setHeader('Set-Cookie', accessTokenCookie);
+
+        return response.sendStatus(200);
+    }
+
 }
