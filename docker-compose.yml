@@ -12,5 +12,11 @@ services:
       - '3306:3306'
     volumes: 
       - example:/var/lib/mysql
+  cache:
+    image: redis:alpine
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    env_file: ./.env
+
 volumes: 
   example:
