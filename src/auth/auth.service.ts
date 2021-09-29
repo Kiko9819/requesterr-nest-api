@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { TokenPayload } from './interfaces/token-payload.interface';
 import { ClientOptions, ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { take } from 'rxjs';
+import { Observable, take } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -20,21 +20,21 @@ export class AuthService {
         const microservicesOptions: ClientOptions = {
             transport: Transport.REDIS,
             options: {
-                url: 'redis://localhost:6379'// TODO make use of config service and get this from env
+                url: `redis://${this.configService.get('DOMAIN')}:${this.configService.get('REDIS_PORT')}`
             }
         };
         this.client = ClientProxyFactory.create(microservicesOptions);
 
     }
 
-    getCookiesForLogOut() {
+    getCookiesForLogOut(): string[] {
         return [
             'Authentication=; HttpOnly; Path=/; Max-Age=0',
             'Refresh=; HttpOnly; Path=/; Max-Age=0'
         ];
     }
 
-    getCookieWithJwtAccessToken(userId: number) {
+    getCookieWithJwtAccessToken(userId: number): string {
         const payload: TokenPayload = { userId };
         const token = this.jwtService.sign(payload, {
             secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),
@@ -43,7 +43,7 @@ export class AuthService {
         return `Authentication=${token}; HttpOnly; Path=/;Max-Age=${this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION_TIME')}`;
     }
 
-    getCookieWithJwtRefreshToken(userId: number) {
+    getCookieWithJwtRefreshToken(userId: number): {cookie: string, token: string} {
         const payload: TokenPayload = { userId };
 
         const token = this.jwtService.sign(payload, {
@@ -59,15 +59,15 @@ export class AuthService {
         };
     }
 
-    getToken(id) {
+    getToken(id): Observable<any> {
         return this.client.send('get-token', id);
     }
 
-    setToken(key, value) {
+    setToken(key, value): Observable<any> {
         return this.client.send('set-token', { key, value });
     }
 
-    deleteToken(key) {
+    deleteToken(key): Observable<any> {
         return this.client.send('delete-token', key);
     }
 
